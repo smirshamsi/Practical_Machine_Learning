@@ -1,0 +1,78 @@
+Weight Lifting Exercises
+========================================================
+
+This markdown document predicts how well the subject in "Weight Lifting Exercises Dataset" performed. Original data and more explanations about data can be found at: 
+http://groupware.les.inf.puc-rio.br/har#dataset
+
+As the first step. load the data and clean it. There are a lot of columns with "NA" and also some columns with zero variance which will not be helpful in our prediction.
+
+```{r,results='hide'}
+library(caret)
+library(corrplot)
+
+d<-read.csv("./pml-training.csv")
+t<-read.csv("./pml-testing.csv")
+
+d[d==""]<-NA
+d_n<-d[,colSums(is.na(d)) ==0]
+n<-names(d[,colSums(is.na(d)) ==0])
+zero_var<-names(which(apply(d_n,2,var)==0))
+d_n<-d_n[,-which(names(d_n)%in%zero_var)]
+d_n<-d_n[,-which(names(d_n)%in%"X")]
+```
+
+repeat the exact same process on the final test case to have a clean test case;
+
+```{r,results='hide'}
+t[t==""]<-NA
+t_n<-t[,which(names(t)%in%n)]
+t_n<-t_n[,-which(names(t_n)%in%zero_var)]
+t_n<-t_n[,-which(names(t_n)%in%"X")]
+```
+
+Let's devide the training data to two groups to be able to evaluate our prediction algorithm and cross validate the prediction:
+
+```{r,results='hide'}
+set.seed(975)
+inTrain <- createDataPartition(d_n$classe, p = 0.75, list = FALSE); 
+train_d_n<-d_n[inTrain,]
+test_d_n<-d_n[-inTrain,]
+```
+
+scale the data and find out the correlation between features. Remove the ones which are more than 80% correlated
+
+```{r,results='hide'}
+train_d_n.scale<-scale(train_d_n[,7:55],center=TRUE,scale=TRUE)
+corr_d_train<-cor(train_d_n.scale)
+corrplot(corr_d_train)
+highCorr <- findCorrelation(corr_d_train, 0.80)
+train_d_n<-train_d_n[-highCorr]
+test_d_n<-test_d_n[-highCorr]
+t_n<-t_n[-highCorr]
+```
+
+train the data using the "rpart" method, then perform cross validation to find out how well your prediction works. Tune the parameters to get better results (in this case the thereshold of correlation was changed). I found using threshold=0.7 is not suitable and leads to error but increasing it to 0.8 makes a significant improvement in prediction.
+
+```{r}
+modelFit<-train(classe~.,method="rpart",data=train_d_n)
+print(modelFit$finalModel)
+
+predict(modelFit,newdata = test_d_n)
+length(which(predict(modelFit,newdata = test_d_n)==test_d_n$classe))
+```
+
+Finally, apply the prediction model to final test set and prepare the accepted format for submitting the output.
+```{r}
+predict(modelFit,newdata = t_n)
+answers<-as.character(predict(modelFit,newdata = t_n))
+pml_write_files = function(x){
+        n = length(x)
+        for(i in 1:n){
+                filename = paste0("problem_id_",i,".txt")
+                write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+                }
+        }
+pml_write_files(answers)
+```
+
+Using "tree" is not ideal in this case. From cross validation it seems the error of model is about 40% but after submission of prediction for 20 test cases, I found out the error in prediction was 50%! Perhaps one should switch to "random forests" to improve this model.
