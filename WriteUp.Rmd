@@ -9,15 +9,15 @@ As the first step. load the data and clean it. There are a lot of columns with "
 ```{r,results='hide'}
 library(caret)
 library(corrplot)
-
+setwd('/Users/sahar/Dropbox/Coursera_Sahar_Danial/Practical Machine Learning/Assignment/')
 d<-read.csv("./pml-training.csv")
 t<-read.csv("./pml-testing.csv")
 
 d[d==""]<-NA
 d_n<-d[,colSums(is.na(d)) ==0]
 n<-names(d[,colSums(is.na(d)) ==0])
-zero_var<-names(which(apply(d_n,2,var)==0))
-d_n<-d_n[,-which(names(d_n)%in%zero_var)]
+#zero_var<-names(which(apply(d_n,2,var)==0))
+#d_n<-d_n[,-which(names(d_n)%in%zero_var)]
 d_n<-d_n[,-which(names(d_n)%in%"X")]
 ```
 
@@ -26,7 +26,7 @@ repeat the exact same process on the final test case to have a clean test case;
 ```{r,results='hide'}
 t[t==""]<-NA
 t_n<-t[,which(names(t)%in%n)]
-t_n<-t_n[,-which(names(t_n)%in%zero_var)]
+#t_n<-t_n[,-which(names(t_n)%in%zero_var)]
 t_n<-t_n[,-which(names(t_n)%in%"X")]
 ```
 
